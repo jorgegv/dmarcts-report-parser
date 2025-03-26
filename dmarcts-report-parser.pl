@@ -75,6 +75,7 @@ use File::Basename ();
 use File::MimeInfo;
 use IO::Socket::SSL;
 #use IO::Socket::SSL 'debug3';
+use Fcntl ':flock';
 
 
 
@@ -168,6 +169,13 @@ use constant ALLOWED_SPFRESULT => qw(
 	permerror
 	unknown
 );
+
+# Reject running if another instance is already running (we are called from cron,
+# and we may run for an extended period if there are lots of queued reports)
+open( my $self, "<", $0 ) or
+    die "Could not access my own script file: $!";
+flock( $self, LOCK_EX | LOCK_NB ) or
+    die "$scriptname is already running, exiting...\n";
 
 # Load script configuration options from local config file. The file is expected
 # to be in the current working directory.
