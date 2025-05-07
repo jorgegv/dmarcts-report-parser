@@ -51,6 +51,24 @@
 			table_options			=> "",
 			indexes				=> [],
 			},
+		"metric" => {
+			column_definitions 		=> [
+				"id"			, "int"	, "unsigned NOT NULL AUTO_INCREMENT PRIMARY KEY",
+				"date"			, "datetime", "NOT NULL",
+				"num_total"		, "int", "unsigned NOT NULL",
+				"num_rejected"		, "int", "unsigned NOT NULL",
+				"num_quarantined"	, "int", "unsigned NOT NULL",
+				"num_align_failed"	, "int", "unsigned NOT NULL",
+				"num_dkim_failed"	, "int", "unsigned NOT NULL",
+				"num_spf_failed"	, "int", "unsigned NOT NULL",
+				"num_spf_dkim_failed"	, "int", "unsigned NOT NULL",
+				"num_dkim_permerror"	, "int", "unsigned NOT NULL",
+				"num_spf_permerror"	, "int", "unsigned NOT NULL",
+				],
+			additional_definitions 		=> "",
+			table_options			=> "",
+			indexes				=> [ 'create index metric_date on metric(date)' ],
+			},
 		},
 
 	add_column => sub {

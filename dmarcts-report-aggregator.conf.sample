@@ -1,0 +1,13 @@
+################################################################################
+### configuration ##############################################################
+################################################################################
+
+$debug = 0;
+
+# Supported types: mysql, Pg. If unset, defaults to mysql
+#$dbtype = 'mysql';
+$dbname = 'dmarc';
+$dbuser = 'dmarc';
+$dbpass = 'password';
+$dbhost = 'dbhost'; # Set the hostname if we can't connect to the local socket.
+$dbport = '3306';
