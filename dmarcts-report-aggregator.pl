@@ -42,6 +42,20 @@ EOF_USAGE
 ;
 }
 
+# SQL queries for each of the aggregated values
+my %queries = (
+    'num_total'			=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ?",
+    'num_rejected'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and disposition='reject'",
+    'num_quarantined'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and disposition='quarantine'",
+    'num_align_failed'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and spf_align != 'pass' and dkim_align != 'pass'",
+    'num_dkim_failed'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult = 'fail' and spfresult != 'fail'",
+    'num_spf_failed'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult != 'fail' and spfresult = 'fail'",
+    'num_spf_dkim_failed'	=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult = 'fail' and spfresult = 'fail'",
+    'num_dkim_permerror'	=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult = 'permerror'",
+    'num_spf_permerror'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and spfresult = 'permerror'",
+);
+
+
 # parse cli options
 # -t <date>: aggregate data for a given date in format YYYY-MM-DD
 # -b <n>: aggregate data for today -n days (n=1 -> yesterday)
