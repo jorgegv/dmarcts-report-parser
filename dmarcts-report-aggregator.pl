@@ -29,10 +29,13 @@ use DBI;
 use File::Basename;
 use Getopt::Std;
 use POSIX qw(strftime);
+use DateTime;
 
 my $scriptname = basename( $0 );
 
 our ( $dbtype, $dbname, $dbuser, $dbpass, $dbhost, $dbport, $db_tx_support, $debug );
+
+$debug = 1;
 
 sub show_usage {
     print <<EOF_USAGE
@@ -42,19 +45,37 @@ EOF_USAGE
 ;
 }
 
-# SQL queries for each of the aggregated values
-my %queries = (
-    'num_total'			=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ?",
-    'num_rejected'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and disposition='reject'",
-    'num_quarantined'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and disposition='quarantine'",
-    'num_align_failed'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and spf_align != 'pass' and dkim_align != 'pass'",
-    'num_dkim_failed'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult = 'fail' and spfresult != 'fail'",
-    'num_spf_failed'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult != 'fail' and spfresult = 'fail'",
-    'num_spf_dkim_failed'	=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult = 'fail' and spfresult = 'fail'",
-    'num_dkim_permerror'	=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and dkimresult = 'permerror'",
-    'num_spf_permerror'		=> "select sum(rptrecord.rcount) as total_rcount from report join rptrecord on report.serial = rptrecord.serial where report.mindate >= ? and report.maxdate < ? and spfresult = 'permerror'",
+# Basic SQL query:
+my $basic_select_query = "SELECT COALESCE( SUM(rptrecord.rcount),0) AS total_rcount
+  FROM report
+  JOIN rptrecord ON report.serial = rptrecord.serial
+  WHERE report.mindate >= ? AND report.maxdate < ? \n";
+
+# query fields
+my @data_fields = qw(
+  num_total
+  num_rejected
+  num_quarantined
+  num_align_failed
+  num_dkim_failed
+  num_spf_failed
+  num_spf_dkim_failed
+  num_dkim_permerror
+  num_spf_permerror
 );
 
+# SQL WHERE clauses for each of the aggregated fields
+my %select_query_where = (
+    'num_total'			=> undef,
+    'num_rejected'		=> "disposition = 'reject'",
+    'num_quarantined'		=> "disposition = 'quarantine'",
+    'num_align_failed'		=> "spf_align <> 'pass' AND dkim_align <> 'pass'",
+    'num_dkim_failed'		=> "dkimresult = 'fail' AND spfresult <> 'fail'",
+    'num_spf_failed'		=> "dkimresult <> 'fail' AND spfresult = 'fail'",
+    'num_spf_dkim_failed'	=> "dkimresult = 'fail' AND spfresult = 'fail'",
+    'num_dkim_permerror'	=> "dkimresult = 'permerror'",
+    'num_spf_permerror'		=> "spfresult = 'permerror'",
+);
 
 # parse cli options
 # -t <date>: aggregate data for a given date in format YYYY-MM-DD
@@ -73,15 +94,23 @@ defined( $opt_t ) or defined( $opt_b ) or do {
   exit;
 };
 
+my $target_date_next;
 if ( defined( $target_date ) ) {
-    ( $target_date =~ m/^\d{4}\-\d{2}\-\d{2}$/ ) or
+    ( $target_date =~ m/^(\d{4})\-(\d{2})\-(\d{2})$/ ) or
         die "$scriptname: <target_date> for -t must be in format YYYY-MM-DD\n";
+    $target_date_next = DateTime->new(
+        year => $1, month => $2, day => $3,
+        hour => 0, minute => 0, second => 0,
+    )->add( days => 1 )->strftime( '%Y-%m-%d' );
 } else {
-    ( defined( $days_before ) and ( $days_before =~ /^\d+$/ ) ) or
+    ( defined( $days_before ) and ( $days_before =~ /^(\d+)$/ ) ) or
         die "$scriptname: <n> for -b must be an integer\n";
-    $target_date = strftime( '%Y-%m-%d', localtime() - $days_before * 24 * 3600 );
+    my $tmp_datetime = DateTime->now()->subtract( days => $1 );
+    $target_date = $tmp_datetime->strftime( '%Y-%m-%d' );
+    $target_date_next = $tmp_datetime->add( days => 1 )->strftime( '%Y-%m-%d' );
 }
 printf( "Target date: %s\n", $target_date ) if $debug;
+printf( "Target date next: %s\n", $target_date_next ) if $debug;
 
 my $conf_file = 'dmarcts-report-aggregator.conf';
 
@@ -128,7 +157,38 @@ if ( not $query_handle->execute() ) {
     die "$scriptname: table 'metric' not found, please run dmarcts-report-parser.pl at least once\n";
 };
 print "Table 'metric' exists\n" if $debug;
+$query_handle->finish;
+
+# build the query to update the metrics table and prepare the query for execution
+# the VALUES are inserted as subqueries
+my $aggregate_query = sprintf( "INSERT INTO metric(\n  date,\n  %s\n) VALUES (\n  ?,\n  %s\n)",
+  join(",\n  ", @data_fields ),	# for INTO
+  join( ",\n  ",		# for VALUES
+    map {
+      '(' . 
+        $basic_select_query . 
+        ( defined( $select_query_where{ $_ } ) ?
+        "  and ".$select_query_where{ $_ } :
+        "  " ) .
+      ')'
+    } @data_fields
+  )
+);
+print "Aggregation query: $aggregate_query\n" if $debug;
+$query_handle = $dbh->prepare( $aggregate_query );
+
+# since each basic select query contains 2 '?' params (start date and end
+# date) the full query needs to be passed that parameter pair, times the
+# number of data fields, plus an additional one at the start for the record date
+my $num_data_fields = scalar( @data_fields );
+if ( not $query_handle->execute(
+    $target_date,
+    ( $target_date, $target_date_next ) x $num_data_fields,
+  )
+) {
+    die "$scriptname: error running SQL query: ". $dbh->errstr . "\n";
+}
+$dbh->commit;
 
 # end of party
 $dbh->disconnect();
-printf( "Target date: %s\n", $target_date ) if $debug;
