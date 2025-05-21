@@ -46,10 +46,13 @@ EOF_USAGE
 }
 
 # Basic SQL query:
+# Reports have mindate and maxdate fields, and may span more than one day. 
+# The messages for each report are charged to the mindate, so that we have a
+# common criteria
 my $basic_select_query = "SELECT COALESCE( SUM(rptrecord.rcount),0) AS total_rcount
   FROM report
   JOIN rptrecord ON report.serial = rptrecord.serial
-  WHERE report.mindate >= ? AND report.maxdate < ? \n";
+  WHERE report.mindate >= ? AND report.mindate < ? \n";
 
 # query fields
 my @data_fields = qw(
