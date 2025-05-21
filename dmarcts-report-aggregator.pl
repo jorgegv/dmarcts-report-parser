@@ -35,7 +35,7 @@ my $scriptname = basename( $0 );
 
 our ( $dbtype, $dbname, $dbuser, $dbpass, $dbhost, $dbport, $db_tx_support, $debug );
 
-$debug = 1;
+#$debug = 1;
 
 sub show_usage {
     print <<EOF_USAGE
@@ -77,6 +77,26 @@ my %select_query_where = (
     'num_spf_permerror'		=> "spfresult = 'permerror'",
 );
 
+# locate conf file or die
+my $conf_file = 'dmarcts-report-aggregator.conf';
+if ( -e $conf_file ) {
+  #$conf_file = "./$conf_file";
+} elsif( -e  (File::Basename::dirname($0) . "/$conf_file" ) ) {
+	$conf_file = ( File::Basename::dirname($0) . "/$conf_file" );
+} else {
+	show_usage();
+	die "$scriptname: Could not read config file '$conf_file' from current working directory or path (" . File::Basename::dirname($0) . ')'
+}
+
+# load conf file with error handling
+if ( substr($conf_file, 0, 1) ne '/'  and substr($conf_file, 0, 1) ne '.') {
+  $conf_file = "./$conf_file";
+}
+my $conf_return = do $conf_file;
+die "$scriptname: couldn't parse $conf_file: $@" if $@;
+die "$scriptname: couldn't do $conf_file: $!"    unless defined $conf_return;
+print "Configuration loaded\n" if $debug;
+
 # parse cli options
 # -t <date>: aggregate data for a given date in format YYYY-MM-DD
 # -b <n>: aggregate data for today -n days (n=1 -> yesterday)
@@ -111,27 +131,6 @@ if ( defined( $target_date ) ) {
 }
 printf( "Target date: %s\n", $target_date ) if $debug;
 printf( "Target date next: %s\n", $target_date_next ) if $debug;
-
-my $conf_file = 'dmarcts-report-aggregator.conf';
-
-# locate conf file or die
-if ( -e $conf_file ) {
-  #$conf_file = "./$conf_file";
-} elsif( -e  (File::Basename::dirname($0) . "/$conf_file" ) ) {
-	$conf_file = ( File::Basename::dirname($0) . "/$conf_file" );
-} else {
-	show_usage();
-	die "$scriptname: Could not read config file '$conf_file' from current working directory or path (" . File::Basename::dirname($0) . ')'
-}
-
-# load conf file with error handling
-if ( substr($conf_file, 0, 1) ne '/'  and substr($conf_file, 0, 1) ne '.') {
-  $conf_file = "./$conf_file";
-}
-my $conf_return = do $conf_file;
-die "$scriptname: couldn't parse $conf_file: $@" if $@;
-die "$scriptname: couldn't do $conf_file: $!"    unless defined $conf_return;
-print "Configuration loaded\n" if $debug;
 
 # Setup connection to database server.
 $db_tx_support  = 1;
