@@ -82,7 +82,7 @@ defined( $opt_b ) or do {
   exit;
 };
 
-# Setup connection to database server.
+# Load Database configuration
 $db_tx_support  = 1;
 our %dbx;
 my $dbx_file = File::Basename::dirname($0) . "/dbx_$dbtype.pl";
@@ -90,13 +90,38 @@ my $dbx_return = do $dbx_file;
 die "$scriptname: couldn't load DB definition for type $dbtype: $@" if $@;
 die "$scriptname: couldn't load DB definition for type $dbtype: $!" unless defined $dbx_return;
 
-my $dbh = DBI->connect("DBI:$dbtype:database=$dbname;host=$dbhost;port=$dbport",
-        $dbuser, $dbpass)
-or die "$scriptname: Cannot connect to database\n";
-if ($db_tx_support) {
-        $dbh->{AutoCommit} = 0;
+# Database connection function, with reconnection policy
+my $persistent_dbh;
+my $first_conn = 1;
+my $persistent_db_conn_retry = 5;	# seconds
+sub get_dbh {
+    while ( not defined( $persistent_dbh ) or not db_connection_alive( $persistent_dbh ) ) {
+        if ( not $first_conn ) {
+            warn "Lost database connection, reconnecting...\n";
+        }
+        $first_conn = 0;
+
+        $persistent_dbh = DBI->connect(
+            "DBI:$dbtype:database=$dbname;host=$dbhost;port=$dbport",
+            $dbuser, $dbpass
+        );
+        last if defined( $persistent_dbh );
+        sleep $persistent_db_conn_retry;
+        warn "Could not connect to database, retrying...\n";
+    }
+
+    if ($db_tx_support) {
+        $persistent_dbh->{ AutoCommit } = 0;
+    }
+    print "Database connection established\n" if $debug;
+    return $persistent_dbh;
 }
-print "Database connection established\n" if $debug;
+
+sub db_connection_alive {
+    my $dbh = shift;
+    return 0 unless defined $dbh;
+    return eval { $dbh->ping } ? 1 : 0;
+}
 
 # helper functions to keep DB state for Prometheus
 # we keep a cached value for the metrics
@@ -111,6 +136,7 @@ sub get_metric {
   if ( ( $cached_metrics->{ 'last_time' } || 0 ) < ( time - $cache_expiry_time ) ) {
     my $target_date = DateTime->now->subtract( days => $days_before )->strftime('%Y-%m-%d');
     my $metrics_query = sprintf( "SELECT * FROM metric WHERE DATE = '%s'", $target_date );
+    my $dbh = get_dbh;
     my $all_metrics = $dbh->selectrow_hashref( $metrics_query );
     $cached_metrics = {
       'last_time'	=> time,
@@ -160,4 +186,4 @@ $runner->parse_options(
 $runner->run( $app );
 
 # end of party
-$dbh->disconnect();
+$persistent_dbh->disconnect();
