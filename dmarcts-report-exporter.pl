@@ -151,7 +151,6 @@ my %metrics = (
   'num_dkim_permerror'	=> 'Messages with a permanent DKIM error',
   'num_spf_permerror'	=> 'Messages with a permanent SPF error',
 );
-my $gauges;
 my $prom = Net::Prometheus->new(
   disable_process_collector => 1,
   disable_perl_collector => 1,
@@ -159,8 +158,7 @@ my $prom = Net::Prometheus->new(
 foreach my $metric ( keys %metrics ) {
   # create each metric as a gauge and configure with a function to call the
   # metric helper function above when needed
-  $gauges->{ $metric } = $prom->new_gauge( 'name' => $metric, 'help' => $metrics{ $metric } );
-  $gauges->{ $metric }->set_function( sub { get_metric( $metric ) } );
+  $prom->new_gauge( 'name' => $metric, 'help' => $metrics{ $metric } )->set_function( sub { get_metric( $metric ) } );
 }
 
 # Configure and create a PSGI Prometheus exporter app
