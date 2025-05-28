@@ -20,6 +20,8 @@ for i in \
   Socket \
   Socket6 \
   PerlIO::gzip \
+  Net::Prometheus \
+  Plack \
   ; do
   cpanm install $i --self-contained
 done
