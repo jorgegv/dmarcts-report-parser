@@ -41,9 +41,8 @@ our ( $dbtype, $dbname, $dbuser, $dbpass, $dbhost, $dbport, $db_tx_support, $deb
 
 sub show_usage {
     print <<EOF_USAGE
-usage: $scriptname [-t <target_date>] [-b <days_before_today>]
-    <target_date> in format 'YYYY-MM-DD'
-    - Purge all reports before the target date
+usage: $scriptname -b <days_before_today>
+    - Server metrics for today or N days before today in Prometheus format
 EOF_USAGE
 ;
 }
@@ -69,32 +68,19 @@ die "$scriptname: couldn't do $conf_file: $!"    unless defined $conf_return;
 print "Configuration loaded\n" if $debug;
 
 # parse cli options
-# -t <date>: aggregate data for a given date in format YYYY-MM-DD
-# -b <n>: aggregate data for today -n days (n=1 -> yesterday)
-our ( $opt_t, $opt_b, $opt_h );
-getopts( "t:b:h" );
+# -b <n>: show data for today -n days (n=1 -> yesterday)
+our ( $opt_b, $opt_h );
+getopts( "b:h" );
 defined( $opt_h ) and do {
   show_usage();
   exit;
 };
 
-my $target_date = $opt_t || undef;
 my $days_before = $opt_b || undef;
-defined( $opt_t ) or defined( $opt_b ) or do {
+defined( $opt_b ) or do {
   show_usage();
   exit;
 };
-
-if ( defined( $target_date ) ) {
-    ( $target_date =~ m/^(\d{4})\-(\d{2})\-(\d{2})$/ ) or
-        die "$scriptname: <target_date> for -t must be in format YYYY-MM-DD\n";
-} else {
-    ( defined( $days_before ) and ( $days_before =~ /^(\d+)$/ ) ) or
-        die "$scriptname: <n> for -b must be an integer\n";
-    my $tmp_datetime = DateTime->now()->subtract( days => $1 );
-    $target_date = $tmp_datetime->strftime( '%Y-%m-%d' );
-}
-printf( "Target date: %s\n", $target_date ) if $debug;
 
 # Setup connection to database server.
 $db_tx_support  = 1;
@@ -123,8 +109,8 @@ sub get_metric {
   # check if the metrics have been loaded from the DB and are not stale
   # if they are, load them and store in the cache with the timestamp
   if ( ( $cached_metrics->{ 'last_time' } || 0 ) < ( time - $cache_expiry_time ) ) {
-    my $yesterday = DateTime->now->subtract( days => 90 )->strftime('%Y-%m-%d');
-    my $metrics_query = sprintf( "SELECT * FROM metric WHERE DATE = '%s'", $yesterday );
+    my $target_date = DateTime->now->subtract( days => $days_before )->strftime('%Y-%m-%d');
+    my $metrics_query = sprintf( "SELECT * FROM metric WHERE DATE = '%s'", $target_date );
     my $all_metrics = $dbh->selectrow_hashref( $metrics_query );
     $cached_metrics = {
       'last_time'	=> time,
@@ -168,6 +154,9 @@ my $app = builder {
 
 # Run the PSGI as a standalone web app
 my $runner = Plack::Runner->new;
+$runner->parse_options(
+  '--port' => 9100,
+);
 $runner->run( $app );
 
 # end of party
