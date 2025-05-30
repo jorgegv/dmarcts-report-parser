@@ -81,7 +81,7 @@ my %select_query_where = (
 );
 
 # locate conf file or die
-my $conf_file = 'dmarcts-report-aggregator.conf';
+my $conf_file = 'dmarcts-report.conf';
 if ( -e $conf_file ) {
   #$conf_file = "./$conf_file";
 } elsif( -e  (File::Basename::dirname($0) . "/$conf_file" ) ) {

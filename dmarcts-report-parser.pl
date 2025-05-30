@@ -179,7 +179,7 @@ flock( $self, LOCK_EX | LOCK_NB ) or
 
 # Load script configuration options from local config file. The file is expected
 # to be in the current working directory.
-my $conf_file = 'dmarcts-report-parser.conf';
+my $conf_file = 'dmarcts-report.conf';
 
 # Get command line options.
 my %options = ();
