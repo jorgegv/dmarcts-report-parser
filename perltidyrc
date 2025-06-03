@@ -1,0 +1,10 @@
+# .perltidyrc
+-l=120		# max line length
+-enc=utf8
+-atnl		# add final newline if needed
+-ce		# cuddled elses
+-b		# modify in place
+-bext='/'	# no backups
+-pt=0		# paren tightness = 0 - loose
+-bt=1		# brace tightness = 1 - middle
+-bbt=0		# brace tightmess for code blocks = 0 - loose
