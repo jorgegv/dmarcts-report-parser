@@ -17,6 +17,15 @@ innodb_file_per_table	= true
 
 To install dependencies...
 
+### on a private Perl environment
+
+When you don't want to install Perl packages system-wide (e.g. when creating a Docker image) the following will use `local::lib` to create a local Perl environment and install everything there:
+
+```
+. ./set-perl-env.sh
+./install-perl-deps.sh
+```
+
 ### on Debian:
 ```
 apt-get install libfile-mimeinfo-perl libmail-imapclient-perl libmime-tools-perl libxml-simple-perl \
