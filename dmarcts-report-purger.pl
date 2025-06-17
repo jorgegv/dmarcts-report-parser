@@ -42,7 +42,7 @@ usage: $scriptname [-t <target_date>] [-b <days_before_today>]
     <target_date> in format 'YYYY-MM-DD'
     - Purge all reports before the target date
 EOF_USAGE
-      ;
+        ;
 }
 
 # locate conf file or die
@@ -55,7 +55,7 @@ if ( -e $conf_file ) {
 } else {
     show_usage();
     die "$scriptname: Could not read config file '$conf_file' from current working directory or path ("
-      . File::Basename::dirname( $0 ) . ')';
+        . File::Basename::dirname( $0 ) . ')';
 }
 
 # load conf file with error handling
@@ -86,10 +86,10 @@ defined( $opt_t ) or defined( $opt_b ) or do {
 
 if ( defined( $target_date ) ) {
     ( $target_date =~ m/^(\d{4})\-(\d{2})\-(\d{2})$/ )
-      or die "$scriptname: <target_date> for -t must be in format YYYY-MM-DD\n";
+        or die "$scriptname: <target_date> for -t must be in format YYYY-MM-DD\n";
 } else {
     ( defined( $days_before ) and ( $days_before =~ /^(\d+)$/ ) )
-      or die "$scriptname: <n> for -b must be an integer\n";
+        or die "$scriptname: <n> for -b must be an integer\n";
     my $tmp_datetime = DateTime->now()->subtract( days => $1 );
     $target_date = $tmp_datetime->strftime( '%Y-%m-%d' );
 }
@@ -104,7 +104,7 @@ die "$scriptname: couldn't load DB definition for type $dbtype: $@" if $@;
 die "$scriptname: couldn't load DB definition for type $dbtype: $!" unless defined $dbx_return;
 
 my $dbh = DBI->connect( "DBI:$dbtype:database=$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass )
-  or die "$scriptname: Cannot connect to database\n";
+    or die "$scriptname: Cannot connect to database\n";
 if ( $db_tx_support ) {
     $dbh->{AutoCommit} = 0;
 }
@@ -118,9 +118,9 @@ my $delete_reports = "DELETE FROM report WHERE mindate < ?";
 # purge data
 foreach my $query ( $delete_records, $delete_reports ) {
     my $qh = $dbh->prepare( $query )
-      or die "Can't prepare statement: " . $dbh->errstr . "\n";
+        or die "Can't prepare statement: " . $dbh->errstr . "\n";
     $qh->execute( $target_date )
-      or die "$scriptname: error running SQL query: " . $dbh->errstr . "\n";
+        or die "$scriptname: error running SQL query: " . $dbh->errstr . "\n";
 }
 $dbh->commit;
 

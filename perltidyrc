@@ -7,4 +7,5 @@
 -bext='/'	# no backups
 -pt=0		# paren tightness = 0 - loose
 -bt=1		# brace tightness = 1 - middle
--bbt=0		# brace tightmess for code blocks = 0 - loose
+-bbt=0		# brace tightness for code blocks = 0 - loose
+-ci=4		# continuation indentation = 4 spaces

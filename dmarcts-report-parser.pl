@@ -133,48 +133,48 @@ my $scriptname = 'dmarcts-report-parser.pl';
 # allowed values for the DB columns, also used to build the enum() in the
 # CREATE TABLE statements in checkDatabase(), in order defined here
 use constant ALLOWED_DISPOSITION => qw(
-  none
-  quarantine
-  reject
-  unknown
+    none
+    quarantine
+    reject
+    unknown
 );
 use constant ALLOWED_DKIM_ALIGN => qw(
-  fail
-  pass
-  unknown
+    fail
+    pass
+    unknown
 );
 use constant ALLOWED_SPF_ALIGN => qw(
-  fail
-  pass
-  unknown
+    fail
+    pass
+    unknown
 );
 use constant ALLOWED_DKIMRESULT => qw(
-  none
-  pass
-  fail
-  neutral
-  policy
-  temperror
-  permerror
-  unknown
+    none
+    pass
+    fail
+    neutral
+    policy
+    temperror
+    permerror
+    unknown
 );
 use constant ALLOWED_SPFRESULT => qw(
-  none
-  neutral
-  pass
-  fail
-  softfail
-  temperror
-  permerror
-  unknown
+    none
+    neutral
+    pass
+    fail
+    softfail
+    temperror
+    permerror
+    unknown
 );
 
 # Reject running if another instance is already running (we are called from cron,
 # and we may run for an extended period if there are lots of queued reports)
 open( my $self, "<", $0 )
-  or die "Could not access my own script file: $!";
+    or die "Could not access my own script file: $!";
 flock( $self, LOCK_EX | LOCK_NB )
-  or die "$scriptname is already running, exiting...\n";
+    or die "$scriptname is already running, exiting...\n";
 
 # Load script configuration options from local config file. The file is expected
 # to be in the current working directory.
@@ -194,7 +194,7 @@ if ( -e $conf_file ) {
 } else {
     show_usage();
     die "$scriptname: Could not read config file '$conf_file' from current working directory or path ("
-      . File::Basename::dirname( $0 ) . ')';
+        . File::Basename::dirname( $0 ) . ')';
 }
 
 # load conf file with error handling
@@ -280,7 +280,7 @@ die "$scriptname: couldn't load DB definition for type $dbtype: $@" if $@;
 die "$scriptname: couldn't load DB definition for type $dbtype: $!" unless defined $dbx_return;
 
 my $dbh = DBI->connect( "DBI:$dbtype:database=$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass )
-  or die "$scriptname: Cannot connect to database\n";
+    or die "$scriptname: Cannot connect to database\n";
 if ( $db_tx_support ) {
     $dbh->{AutoCommit} = 0;
 }
@@ -308,7 +308,7 @@ if ( $reports_source == TS_IMAP ) {
     }
 
     print "connection to $imapserver with Ssl => $imapssl, User => $imapuser, Ignoresizeerrors => $imapignoreerror\n"
-      if $debug;
+        if $debug;
 
     # Setup connection to IMAP server.
     my $imap = Mail::IMAPClient->new(
@@ -318,10 +318,10 @@ if ( $reports_source == TS_IMAP ) {
         Starttls   => $imapopt,
         Debug      => $debug,
         Socketargs => $socketargs
-      )
+        )
 
-      # module uses eval, so we use $@ instead of $!
-      or die "$scriptname: IMAP Failure: $@";
+        # module uses eval, so we use $@ instead of $!
+        or die "$scriptname: IMAP Failure: $@";
 
     # This connection is finished this way because of the tradgedy of exchange...
     $imap->User( $imapuser );
@@ -340,7 +340,7 @@ if ( $reports_source == TS_IMAP ) {
 
     # How many msgs are we going to process?
     print "Processing " . $imap->message_count( $imapreadfolder ) . " messages in folder <$imapreadfolder>.\n"
-      if $debug;
+        if $debug;
 
     # Only select and search $imapreadfolder, if we actually
     # have something to do.
@@ -348,17 +348,17 @@ if ( $reports_source == TS_IMAP ) {
 
         # Select the mailbox to get messages from.
         $imap->select( $imapreadfolder )
-          or die "$scriptname: IMAP Select Error: $!";
+            or die "$scriptname: IMAP Select Error: $!";
 
         # Store each message as an array element.
         my @msgs = $imap->search( 'ALL' )
-          or die "$scriptname: Couldn't get all messages\n";
+            or die "$scriptname: Couldn't get all messages\n";
 
         # Loop through IMAP messages.
         foreach my $msg ( @msgs ) {
 
             my $processResult =
-              processXML( TS_MESSAGE_FILE, $imap->message_string( $msg ), "IMAP message with UID #" . $msg );
+                processXML( TS_MESSAGE_FILE, $imap->message_string( $msg ), "IMAP message with UID #" . $msg );
             $processedReport++;
             if ( $processResult & 4 ) {
 
@@ -376,7 +376,7 @@ if ( $reports_source == TS_IMAP ) {
 
                 # processXML return a value with delete bit enabled.
                 $imap->delete_message( $msg )
-                  or warn "$scriptname: Could not delete IMAP message. [$@]\n";
+                    or warn "$scriptname: Could not delete IMAP message. [$@]\n";
             } elsif ( $imapmovefolder ) {
                 if ( $processResult & 1 || !$imapmovefoldererr ) {
 
@@ -419,7 +419,7 @@ if ( $reports_source == TS_IMAP ) {
 
             if ( $reports_source == TS_MBOX_FILE ) {
                 my $parser =
-                  Mail::Mbox::MessageParser->new( { "file_name" => $f, "debug" => $debug, "enable_cache" => 0 } );
+                    Mail::Mbox::MessageParser->new( { "file_name" => $f, "debug" => $debug, "enable_cache" => 0 } );
                 my $num = 0;
 
                 do {
@@ -499,7 +499,7 @@ sub moveToImapFolder {
     # Try to create $imapfolder, if it does not exist.
     if ( !$imap->exists( $imapfolder ) ) {
         $imap->create( $imapfolder )
-          or warn "$scriptname: Could not create IMAP folder: $imapfolder.\n";
+            or warn "$scriptname: Could not create IMAP folder: $imapfolder.\n";
     }
 
     # Try to move the message to $imapfolder.
@@ -510,7 +510,7 @@ sub moveToImapFolder {
         warn "$scriptname: Messsage will not be moved/deleted. [$@]\n";
     } else {
         $imap->delete_message( $msg )
-          or do {
+            or do {
             warn "$scriptname: Error on moving (copy and delete) processed IMAP message: Could not DELETE message\n";
             warn "$scriptname: after copying it to <$imapfolder>. [$@]\n";
         }
@@ -684,10 +684,10 @@ sub getXMLFromMessage {
         my $unzip = "";
         if ( $isgzip ) {
             open( XML, "<:gzip", $location )
-              or $unzip = "ungzip";
+                or $unzip = "ungzip";
         } else {
             open( XML, "-|", "unzip", "-p", $location )
-              or $unzip = "unzip";    # Will never happen.
+                or $unzip = "unzip";    # Will never happen.
 
             # Sadly unzip -p never failes, but we can check if the
             # filehandle points to an empty file and pretend it did
@@ -757,10 +757,10 @@ sub getXMLFromZip {
         my $unzip = "";
         if ( $isgzip ) {
             open( XML, "<:gzip", $filename )
-              or $unzip = "ungzip";
+                or $unzip = "ungzip";
         } else {
             open( XML, "-|", "unzip", "-p", $filename )
-              or $unzip = "unzip";    # Will never happen.
+                or $unzip = "unzip";    # Will never happen.
 
             # Sadly unzip -p never failes, but we can check if the
             # filehandle points to an empty file and pretend it did
@@ -890,8 +890,8 @@ qq{INSERT INTO report(mindate,maxdate,domain,org,reportid,email,extra_contact_in
     }
     if ( length( $storexml ) > $maxsize_xml ) {
         warn "$scriptname: $org: $id: Skipping storage of large XML ("
-          . length( $storexml )
-          . " bytes) as defined in config file.\n";
+            . length( $storexml )
+            . " bytes) as defined in config file.\n";
         $storexml = "";
     }
     $dbh->do(

@@ -44,7 +44,7 @@ sub show_usage {
 usage: $scriptname -b <days_before_today>
     - Server metrics for today or N days before today in Prometheus format
 EOF_USAGE
-      ;
+        ;
 }
 
 # locate conf file or die
@@ -57,7 +57,7 @@ if ( -e $conf_file ) {
 } else {
     show_usage();
     die "$scriptname: Could not read config file '$conf_file' from current working directory or path ("
-      . File::Basename::dirname( $0 ) . ')';
+        . File::Basename::dirname( $0 ) . ')';
 }
 
 # load conf file with error handling

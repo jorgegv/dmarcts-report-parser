@@ -42,7 +42,7 @@ sub show_usage {
 usage: $scriptname [-t <target_date>] [-b <days_before_today>]
     <target_date> in format 'YYYY-MM-DD'
 EOF_USAGE
-      ;
+        ;
 }
 
 # Basic SQL query:
@@ -56,15 +56,15 @@ my $basic_select_query = "SELECT COALESCE( SUM(rptrecord.rcount),0) AS total_rco
 
 # query fields
 my @data_fields = qw(
-  num_total
-  num_rejected
-  num_quarantined
-  num_align_failed
-  num_dkim_failed
-  num_spf_failed
-  num_spf_dkim_failed
-  num_dkim_permerror
-  num_spf_permerror
+    num_total
+    num_rejected
+    num_quarantined
+    num_align_failed
+    num_dkim_failed
+    num_spf_failed
+    num_spf_dkim_failed
+    num_dkim_permerror
+    num_spf_permerror
 );
 
 # SQL WHERE clauses for each of the aggregated fields
@@ -90,7 +90,7 @@ if ( -e $conf_file ) {
 } else {
     show_usage();
     die "$scriptname: Could not read config file '$conf_file' from current working directory or path ("
-      . File::Basename::dirname( $0 ) . ')';
+        . File::Basename::dirname( $0 ) . ')';
 }
 
 # load conf file with error handling
@@ -122,7 +122,7 @@ defined( $opt_t ) or defined( $opt_b ) or do {
 my $target_date_next;
 if ( defined( $target_date ) ) {
     ( $target_date =~ m/^(\d{4})\-(\d{2})\-(\d{2})$/ )
-      or die "$scriptname: <target_date> for -t must be in format YYYY-MM-DD\n";
+        or die "$scriptname: <target_date> for -t must be in format YYYY-MM-DD\n";
     $target_date_next = DateTime->new(
         year   => $1,
         month  => $2,
@@ -133,7 +133,7 @@ if ( defined( $target_date ) ) {
     )->add( days => 1 )->strftime( '%Y-%m-%d' );
 } else {
     ( defined( $days_before ) and ( $days_before =~ /^(\d+)$/ ) )
-      or die "$scriptname: <n> for -b must be an integer\n";
+        or die "$scriptname: <n> for -b must be an integer\n";
     my $tmp_datetime = DateTime->now()->subtract( days => $1 );
     $target_date      = $tmp_datetime->strftime( '%Y-%m-%d' );
     $target_date_next = $tmp_datetime->add( days => 1 )->strftime( '%Y-%m-%d' );
@@ -150,7 +150,7 @@ die "$scriptname: couldn't load DB definition for type $dbtype: $@" if $@;
 die "$scriptname: couldn't load DB definition for type $dbtype: $!" unless defined $dbx_return;
 
 my $dbh = DBI->connect( "DBI:$dbtype:database=$dbname;host=$dbhost;port=$dbport", $dbuser, $dbpass )
-  or die "$scriptname: Cannot connect to database\n";
+    or die "$scriptname: Cannot connect to database\n";
 if ( $db_tx_support ) {
     $dbh->{AutoCommit} = 0;
 }
@@ -174,14 +174,14 @@ my $aggregate_query = sprintf(
     join(
         ",\n  ",                      # for VALUES
         map {
-                '('
-              . $basic_select_query
-              . (
+                  '('
+                . $basic_select_query
+                . (
                 defined( $select_query_where{$_} )
                 ? "  and " . $select_query_where{$_}
                 : "  "
-              )
-              . ')'
+                )
+                . ')'
         } @data_fields
     )
 );
